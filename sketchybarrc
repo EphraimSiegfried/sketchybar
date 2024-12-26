@@ -1,0 +1,13 @@
+#!/usr/bin/env lua
+
+-- Add the sketchybar module to the package cpath (the module could be
+-- installed into the default search path then this would not be needed)
+package.cpath = package.cpath .. ";/nix/store/3gbkkmb91hzcsviadyc639wv35dsqj2w-lua5.2-SbarLua-0-unstable-2024-08-12/lib/lua/5.2/?.so"
+
+sbar = require("sketchybar")
+sbar.exec("killall sketchyhelper || sketchyhelper git.felix.sketchyhelper >/dev/null 2>&1 &")
+sbar.begin_config()
+require("init")
+sbar.hotload(true)
+sbar.end_config()
+sbar.event_loop()
