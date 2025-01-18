@@ -10,7 +10,6 @@ local battery = sbar.add("item", "battery", {
 		font = {
 			family = settings.nerd_font,
 			style = "Regular",
-			size = 16.0,
 		},
 	},
 	label = {
@@ -18,7 +17,6 @@ local battery = sbar.add("item", "battery", {
 		align = "left",
 		font = {
 			style = "Regular",
-			size = 14.0,
 		},
 	},
 	update_freq = 30,

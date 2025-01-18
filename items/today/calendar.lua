@@ -1,13 +1,11 @@
 local cal = sbar.add("item", {
 	icon = {
-		padding_right = 0,
 		font = {
 			style = "Black",
-			size = 12.0,
+			size = 14.0,
 		},
 	},
 	label = {
-		width = 45,
 		align = "right",
 	},
 	position = "right",

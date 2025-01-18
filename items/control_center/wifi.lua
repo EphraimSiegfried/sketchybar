@@ -13,7 +13,6 @@ local wifi = sbar.add("item", "wifi", {
 		font = {
 			family = settings.nerd_font,
 			style = "Regular",
-			size = 16.0,
 		},
 	},
 	background = {
@@ -38,7 +37,6 @@ local ssid = sbar.add("item", {
 	align = "center",
 	label = {
 		font = {
-			size = 15,
 			style = "Bold",
 		},
 		max_chars = 18,

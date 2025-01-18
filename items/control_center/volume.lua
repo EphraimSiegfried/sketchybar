@@ -31,14 +31,12 @@ volume.icon = sbar.add("item", "volume.icon", {
 		align = "right",
 		font = {
 			style = "Regular",
-			size = 14.0,
 		},
 	},
 	label = {
 		align = "left",
 		font = {
 			style = "Regular",
-			size = 14.0,
 		},
 	},
 })

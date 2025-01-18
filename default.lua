@@ -6,9 +6,9 @@ sbar.default({
 	updates = "when_shown",
 	icon = {
 		font = {
-			family = settings.font,
+			family = settings.nerd_font,
 			style = "Bold",
-			size = 14.0
+			size = 16.0,
 		},
 		color = colors.white,
 		padding_left = settings.paddings,
@@ -18,7 +18,7 @@ sbar.default({
 		font = {
 			family = settings.font,
 			style = "Semibold",
-			size = 13.0
+			size = 16.0,
 		},
 		color = colors.white,
 		padding_left = settings.paddings,
@@ -26,7 +26,7 @@ sbar.default({
 	},
 	background = {
 		height = 26,
-		corner_radius = 3,
+		corner_radius = 8,
 		border_width = 2,
 	},
 	popup = {
@@ -40,5 +40,5 @@ sbar.default({
 		blur_radius = 20,
 	},
 	padding_left = 5,
-	padding_right = 5
+	padding_right = 5,
 })

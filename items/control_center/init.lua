@@ -5,12 +5,14 @@ local volume = require("items.control_center.volume")
 local battery = require("items.control_center.battery")
 local wifi = require("items.control_center.wifi")
 -- local bluetooth = require("items.control_center.bluetooth")
+local cpu = require("items.control_center.cpu")
 
 local items = {
 	wifi.name,
 	-- bluetooth.name,
 	battery.name,
 	volume.icon.name,
+	cpu.name,
 }
 
 sbar.add("bracket", items, {
