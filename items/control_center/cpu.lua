@@ -4,7 +4,7 @@ local settings = require("settings")
 local colors = require("colors")
 local icons = require("icons")
 
-sbar.exec("killall sketchy_cpu_load >/dev/null; sketchy_cpu_load cpu_update 2.0")
+sbar.exec("killall sketchy_cpu_load &>/dev/null; sketchy_cpu_load cpu_update 2.0")
 
 local cpu = sbar.add("item", "cpu", {
   icon = {
