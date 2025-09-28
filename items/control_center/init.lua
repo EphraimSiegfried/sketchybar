@@ -8,19 +8,19 @@ local wifi = require("items.control_center.wifi")
 local cpu = require("items.control_center.cpu")
 
 local items = {
-	wifi.name,
-	-- bluetooth.name,
-	battery.name,
-	volume.icon.name,
-	cpu.name,
+  wifi.name,
+  -- bluetooth.name,
+  battery.name,
+  volume.icon.name,
+  cpu.name,
 }
 
 sbar.add("bracket", items, {
-	background = {
-		color = colors.bar.bg,
-		border_color = colors.bar.border,
-		border_width = 2,
-		padding_left = 5,
-		padding_right = 10,
-	},
+  background = {
+    color = colors.bar.bg,
+    border_color = colors.bar.border,
+    border_width = 2,
+    padding_left = 5,
+    padding_right = 10,
+  },
 })

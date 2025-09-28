@@ -5,163 +5,163 @@ local colors = require("colors")
 local popup_width = 250
 
 local wifi = sbar.add("item", "wifi", {
-	position = "right",
-	align = "right",
-	click_script = "sketchybar --set $NAME popup.drawing=toggle",
-	icon = {
-		string = icons.wifi,
-		font = {
-			family = settings.nerd_font,
-			style = "Regular",
-		},
-	},
-	background = {
-		padding_left = 5,
-	},
-	label = { drawing = false, font = { style = "Regular" } },
-	update_freq = 60,
-	popup = {
-		align = "right",
-	},
+  position = "right",
+  align = "right",
+  click_script = "sketchybar --set $NAME popup.drawing=toggle",
+  icon = {
+    string = icons.wifi,
+    font = {
+      family = settings.nerd_font,
+      style = "Regular",
+    },
+  },
+  background = {
+    padding_left = 5,
+  },
+  label = { drawing = false, font = { style = "Regular" } },
+  update_freq = 60,
+  popup = {
+    align = "right",
+  },
 })
 
 local ssid = sbar.add("item", {
-	position = "popup." .. wifi.name,
-	icon = {
-		font = {
-			style = "Bold",
-		},
-		string = icons.wifi.router,
-	},
-	width = popup_width,
-	align = "center",
-	label = {
-		font = {
-			style = "Bold",
-		},
-		max_chars = 18,
-		string = "????????????",
-	},
-	background = {
-		height = 2,
-		color = colors.grey,
-		y_offset = -15,
-	},
+  position = "popup." .. wifi.name,
+  icon = {
+    font = {
+      style = "Bold",
+    },
+    string = icons.wifi.router,
+  },
+  width = popup_width,
+  align = "center",
+  label = {
+    font = {
+      style = "Bold",
+    },
+    max_chars = 18,
+    string = "????????????",
+  },
+  background = {
+    height = 2,
+    color = colors.grey,
+    y_offset = -15,
+  },
 })
 
 local hostname = sbar.add("item", {
-	position = "popup." .. wifi.name,
-	icon = {
-		align = "left",
-		string = "Hostname:",
-		width = popup_width / 2,
-	},
-	label = {
-		max_chars = 20,
-		string = "????????????",
-		width = popup_width / 2,
-		align = "right",
-	},
+  position = "popup." .. wifi.name,
+  icon = {
+    align = "left",
+    string = "Hostname:",
+    width = popup_width / 2,
+  },
+  label = {
+    max_chars = 20,
+    string = "????????????",
+    width = popup_width / 2,
+    align = "right",
+  },
 })
 
 local ip = sbar.add("item", {
-	position = "popup." .. wifi.name,
-	icon = {
-		align = "left",
-		string = "IP:",
-		width = popup_width / 2,
-	},
-	label = {
-		string = "???.???.???.???",
-		width = popup_width / 2,
-		align = "right",
-	},
+  position = "popup." .. wifi.name,
+  icon = {
+    align = "left",
+    string = "IP:",
+    width = popup_width / 2,
+  },
+  label = {
+    string = "???.???.???.???",
+    width = popup_width / 2,
+    align = "right",
+  },
 })
 
 local mask = sbar.add("item", {
-	position = "popup." .. wifi.name,
-	icon = {
-		align = "left",
-		string = "Subnet mask:",
-		width = popup_width / 2,
-	},
-	label = {
-		string = "???.???.???.???",
-		width = popup_width / 2,
-		align = "right",
-	},
+  position = "popup." .. wifi.name,
+  icon = {
+    align = "left",
+    string = "Subnet mask:",
+    width = popup_width / 2,
+  },
+  label = {
+    string = "???.???.???.???",
+    width = popup_width / 2,
+    align = "right",
+  },
 })
 
 local router = sbar.add("item", {
-	position = "popup." .. wifi.name,
-	icon = {
-		align = "left",
-		string = "Router:",
-		width = popup_width / 2,
-	},
-	label = {
-		string = "???.???.???.???",
-		width = popup_width / 2,
-		align = "right",
-	},
+  position = "popup." .. wifi.name,
+  icon = {
+    align = "left",
+    string = "Router:",
+    width = popup_width / 2,
+  },
+  label = {
+    string = "???.???.???.???",
+    width = popup_width / 2,
+    align = "right",
+  },
 })
 
 wifi:subscribe({ "wifi_change", "system_woke" }, function()
-	local connected = true
-	sbar.exec("ipconfig getifaddr en0", function(ip_address)
-		connected = (ip_address ~= "")
-		wifi:set({
-			icon = {
-				string = connected and icons.wifi or icons.wifi_off,
-			},
-		})
-	end)
-	sbar.exec(
-		'system_profiler spairportdatatype | awk \'/current network/ {getline;$1=$1; gsub(":",""); print;exit}\'',
-		function(result)
-			wifi:set({ label = { string = result, drawing = connected } })
-		end
-	) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
+  local connected = true
+  sbar.exec("ipconfig getifaddr en0", function(ip_address)
+    connected = (ip_address ~= "")
+    wifi:set({
+      icon = {
+        string = connected and icons.wifi or icons.wifi_off,
+      },
+    })
+  end)
+  sbar.exec(
+    'system_profiler spairportdatatype | awk \'/current network/ {getline;$1=$1; gsub(":",""); print;exit}\'',
+    function(result)
+      wifi:set({ label = { string = result, drawing = connected } })
+    end
+  ) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
 end)
 
 wifi:subscribe({
-	"mouse.exited",
-	"mouse.exited.global",
+  "mouse.exited",
+  "mouse.exited.global",
 }, function(_)
-	wifi:set({ popup = { drawing = false } })
+  wifi:set({ popup = { drawing = false } })
 end)
 
 wifi:subscribe({
-	"mouse.entered",
+  "mouse.entered",
 }, function(_)
-	wifi:set({ popup = { drawing = true } })
-	sbar.exec("networksetup -getcomputername", function(result)
-		hostname:set({ label = result })
-	end)
-	sbar.exec("ipconfig getifaddr en0", function(result)
-		ip:set({ label = result })
-	end)
-	sbar.exec(
-		'system_profiler spairportdatatype | awk \'/current network/ {getline;$1=$1; gsub(":",""); print;exit}\'',
-		function(result)
-			ssid:set({ label = result })
-		end
-	) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
-	sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Subnet mask: ' '/^Subnet mask: / {print $2}'", function(result)
-		mask:set({ label = result })
-	end)
-	sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Router: ' '/^Router: / {print $2}'", function(result)
-		router:set({ label = result })
-	end)
+  wifi:set({ popup = { drawing = true } })
+  sbar.exec("networksetup -getcomputername", function(result)
+    hostname:set({ label = result })
+  end)
+  sbar.exec("ipconfig getifaddr en0", function(result)
+    ip:set({ label = result })
+  end)
+  sbar.exec(
+    'system_profiler spairportdatatype | awk \'/current network/ {getline;$1=$1; gsub(":",""); print;exit}\'',
+    function(result)
+      ssid:set({ label = result })
+    end
+  ) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
+  sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Subnet mask: ' '/^Subnet mask: / {print $2}'", function(result)
+    mask:set({ label = result })
+  end)
+  sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Router: ' '/^Router: / {print $2}'", function(result)
+    router:set({ label = result })
+  end)
 end)
 
 local function copy_label_to_clipboard(env)
-	local label = sbar.query(env.NAME).label.value
-	sbar.exec('echo "' .. label .. '" | pbcopy')
-	sbar.set(env.NAME, { label = { string = icons.clipboard, align = "center" } })
-	sbar.delay(1, function()
-		sbar.set(env.NAME, { label = { string = label, align = "right" } })
-	end)
+  local label = sbar.query(env.NAME).label.value
+  sbar.exec('echo "' .. label .. '" | pbcopy')
+  sbar.set(env.NAME, { label = { string = icons.clipboard, align = "center" } })
+  sbar.delay(1, function()
+    sbar.set(env.NAME, { label = { string = label, align = "right" } })
+  end)
 end
 
 ssid:subscribe("mouse.clicked", copy_label_to_clipboard)
