@@ -17,20 +17,9 @@ local function execute_command(command)
   return result
 end
 
-local function hide_rec(window_id, min)
-  if window_id < min then
-    return
-  end
-  sbar.exec("aerospace list-windows --workspace " .. window_id .. " --count", function(num_windows)
-    if tonumber(num_windows) > 0 then
-      return
-    end
-    workspaces[window_id]:set({ label = { string = "", drawing = false }, icon = { drawing = false } })
-    hide_rec(window_id - 1, min)
-  end)
+local function set_visible(workspace_id, is_visible)
+  workspaces[workspace_id]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
-
-local function add_workspace(monitor_id, workspace_id) end
 
 -- Get monitor information
 
@@ -42,12 +31,6 @@ local function set_icon_line(workspace_id)
     [[aerospace list-windows --workspace ]] .. tostring(workspace_id) .. [[ | awk -F '|' '{print $2}']],
     function(appNames)
       local icon_line = ""
-      if appNames == "" then
-        workspaces[tonumber(workspace_id)]:set({
-          label = { string = "", drawing = false },
-          icon = { drawing = false },
-        })
-      end
       for appName in string.gmatch(appNames, "[^\r\n]+") do
         -- Trim leading and trailing whitespace
         appName = appName:match("^%s*(.-)%s*$")
@@ -94,6 +77,7 @@ for monitor_id, _ in pairs(monitors) do
         padding_right = 8,
         color = colors.white,
         highlight_color = colors.magenta,
+        drawing = false,
       },
       label = {
         padding_right = 10,
@@ -101,6 +85,7 @@ for monitor_id, _ in pairs(monitors) do
         highlight_color = colors.white,
         font = "sketchybar-app-font:Regular:16.0",
         y_offset = -1,
+        drawing = false,
       },
       padding_right = 1,
       padding_left = 1,
@@ -136,12 +121,21 @@ for monitor_id, _ in pairs(monitors) do
   end
 end
 
+sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_window)
+  for id = 1, max_active_window do
+    set_visible(id, true)
+  end
+end)
+
 local space_window_observer = sbar.add("item", {
   drawing = false,
   updates = true,
 })
+
 space_window_observer:subscribe({ "space_windows_change" }, function()
-  set_icon_line("focused")
+  sbar.exec("aerospace list-workspaces --focused", function(focused_id)
+    set_icon_line(tonumber(focused_id))
+  end)
 end)
 
 -- TODO: fix this
@@ -154,33 +148,21 @@ end)
 space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
   local focused_id = tonumber(env.FOCUSED_WORKSPACE)
   local prev_id = tonumber(env.PREV_WORKSPACE)
-  set_icon_line("focused")
 
-  if not prev_id or prev_id == focused_id then
+  if not prev_id or not focused_id or prev_id == focused_id then
     return
   end
 
-  if prev_id < focused_id then
-    for i = prev_id, focused_id do
-      workspaces[i]:set({ label = { drawing = true }, icon = { drawing = true } })
-    end
-  elseif prev_id > focused_id then
-    local can_hide = true
-    for i = prev_id + 1, max_workspaces do
-      if workspaces[i]:query().label.drawing == "on" then
-        can_hide = false
-        break
+  sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_workspace)
+    max_active_workspace = math.max(focused_id, tonumber(max_active_workspace))
+    if prev_id > max_active_workspace then
+      for id = max_active_workspace + 1, prev_id do
+        set_visible(id, false)
+      end
+    else
+      for id = prev_id, max_active_workspace do
+        set_visible(id, true)
       end
     end
-    if can_hide then
-      hide_rec(prev_id, focused_id)
-    end
-  end
+  end)
 end)
-
-local ok, ws = pcall(function()
-  return execute_command("aerospace list-workspaces --focused"):gsub("%s+", "")
-end)
-local focused_workspace = ok and tonumber(ws) or -1
-
-sbar.trigger("aerospace_workspace_change", { FOCUSED_WORKSPACE = focused_workspace })
