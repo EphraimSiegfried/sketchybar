@@ -17,18 +17,18 @@ local function execute_command(command)
   return result
 end
 
-local function set_visible(workspace_id, is_visible)
-  workspaces[workspace_id]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
+local function set_visible(wid, is_visible)
+  workspaces[wid]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
 
 -- Get monitor information
 
-local function set_icon_line(workspace_id)
-  if workspace_id == nil then
+local function set_icon_line(wid)
+  if wid == nil then
     return
   end
   sbar.exec(
-    [[aerospace list-windows --workspace ]] .. tostring(workspace_id) .. [[ | awk -F '|' '{print $2}']],
+    [[aerospace list-windows --workspace ]] .. tostring(wid) .. [[ | awk -F '|' '{print $2}']],
     function(appNames)
       local icon_line = ""
       for appName in string.gmatch(appNames, "[^\r\n]+") do
@@ -38,15 +38,15 @@ local function set_icon_line(workspace_id)
         local icon = ((lookup == nil) and app_icons["Default"] or lookup)
         icon_line = icon_line .. icon
       end
-      if workspace_id == "focused" then
+      if wid == "focused" then
         sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
-          for id in focused_workspace:gmatch("%S+") do
-            workspaces[tonumber(id)]:set({ label = icon_line })
+          for wid in focused_workspace:gmatch("%S+") do
+            workspaces[tonumber(wid)]:set({ label = icon_line })
           end
         end)
       else
         sbar.animate("tanh", 10, function()
-          workspaces[tonumber(workspace_id)]:set({ label = icon_line })
+          workspaces[tonumber(wid)]:set({ label = icon_line })
         end)
       end
     end
@@ -59,20 +59,20 @@ end
 local monitors = {}
 local monitor_output = execute_command("aerospace list-monitors")
 for line in monitor_output:gmatch("[^\r\n]+") do
-  local id, name = line:match("(%d+) | (.+)")
-  if id and name then
-    monitors[tonumber(id)] = name
+  local mid, name = line:match("(%d+) | (.+)")
+  if mid and name then
+    monitors[tonumber(mid)] = name
   end
 end
 
-for monitor_id, _ in pairs(monitors) do
-  for workspace_id = 1, max_workspaces do
-    local space = sbar.add("space", "space." .. tostring(workspace_id), {
-      space = monitor_id,
-      display = monitor_id,
+for mid, _ in pairs(monitors) do
+  for wid = 1, max_workspaces do
+    local space = sbar.add("space", "space." .. tostring(wid), {
+      space = mid,
+      display = mid,
       icon = {
         font = { family = settings.font },
-        string = workspace_id,
+        string = wid,
         padding_left = 10,
         padding_right = 8,
         color = colors.white,
@@ -97,16 +97,16 @@ for monitor_id, _ in pairs(monitors) do
       popup = { background = { border_width = 5, border_color = colors.black } },
     })
 
-    workspaces[workspace_id] = space
+    workspaces[wid] = space
 
     -- Padding space
-    sbar.add("space", "space.padding." .. tostring(workspace_id), {
-      space = monitor_id,
+    sbar.add("space", "space.padding." .. tostring(wid), {
+      space = mid,
       width = settings.paddings,
     })
 
     space:subscribe({ "aerospace_workspace_change" }, function(env)
-      local selected = tonumber(env.FOCUSED_WORKSPACE) == workspace_id
+      local selected = tonumber(env.FOCUSED_WORKSPACE) == wid
       space:set({
         icon = { highlight = selected },
         label = { highlight = selected },
@@ -115,15 +115,15 @@ for monitor_id, _ in pairs(monitors) do
     end)
 
     space:subscribe({ "mouse.clicked" }, function()
-      sbar.exec("aerospace workspace " .. workspace_id)
+      sbar.exec("aerospace workspace " .. wid)
     end)
-    set_icon_line(workspace_id)
+    set_icon_line(wid)
   end
 end
 
 sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_window)
-  for id = 1, max_active_window do
-    set_visible(id, true)
+  for wid = 1, max_active_window do
+    set_visible(wid, true)
   end
 end)
 
@@ -156,12 +156,12 @@ space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
   sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_workspace)
     max_active_workspace = math.max(focused_id, tonumber(max_active_workspace))
     if prev_id > max_active_workspace then
-      for id = max_active_workspace + 1, prev_id do
-        set_visible(id, false)
+      for wid = max_active_workspace + 1, prev_id do
+        set_visible(wid, false)
       end
     else
-      for id = prev_id, max_active_workspace do
-        set_visible(id, true)
+      for wid = prev_id, max_active_workspace do
+        set_visible(wid, true)
       end
     end
   end)
