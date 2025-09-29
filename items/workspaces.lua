@@ -5,6 +5,7 @@ local sbar = require("sketchybar")
 require("utils")
 
 sbar.add("event", "aerospace_workspace_change")
+sbar.add("event", "change_window_workspace")
 
 local workspaces = {}
 local max_workspaces = 9
@@ -136,6 +137,11 @@ space_window_observer:subscribe({ "space_windows_change" }, function()
   sbar.exec("aerospace list-workspaces --focused", function(focused_id)
     set_icon_line(tonumber(focused_id))
   end)
+end)
+
+space_window_observer:subscribe({ "change_window_workspace" }, function(env)
+  set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
+  set_icon_line(tonumber(env.TARGET_WORKSPACE))
 end)
 
 -- TODO: fix this
