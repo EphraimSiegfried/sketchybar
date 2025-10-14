@@ -118,7 +118,7 @@ wifi:subscribe({ "wifi_change", "system_woke" }, function()
   end)
   sbar.exec("ipconfig getsummary en0 | awk -F ' SSID : '  '/ SSID : / {print $2}'", function(result)
     wifi:set({ label = { string = result, drawing = connected } })
-  end) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
+  end)
 end)
 
 wifi:subscribe({
@@ -138,12 +138,9 @@ wifi:subscribe({
   sbar.exec("ipconfig getifaddr en0", function(result)
     ip:set({ label = result })
   end)
-  sbar.exec(
-    'system_profiler spairportdatatype | awk \'/current network/ {getline;$1=$1; gsub(":",""); print;exit}\'',
-    function(result)
-      ssid:set({ label = result })
-    end
-  ) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
+  sbar.exec("ipconfig getsummary en0 | awk -F ' SSID : '  '/ SSID : / {print $2}'", function(result)
+    ssid:set({ label = result })
+  end) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
   sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Subnet mask: ' '/^Subnet mask: / {print $2}'", function(result)
     mask:set({ label = result })
   end)
