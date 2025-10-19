@@ -31,6 +31,7 @@ local function set_icon_line(wid)
   sbar.exec(
     [[aerospace list-windows --workspace ]] .. tostring(wid) .. [[ | awk -F '|' '{print $2}']],
     function(appNames)
+      -- set_visible(wid, true)
       local icon_line = ""
       for appName in string.gmatch(appNames, "[^\r\n]+") do
         -- Trim leading and trailing whitespace

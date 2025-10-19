@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "custom": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1760857286,
+        "owner": "EphraimSiegfried",
+        "repo": "nur-packages",
+        "rev": "6c22b8e3a55dc93eb4df3b04a604f913c40171c3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "EphraimSiegfried",
+        "repo": "nur-packages",
+        "type": "github"
+      }
+    },
     "devenv": {
       "locked": {
         "dir": "src/modules",
@@ -74,6 +91,21 @@
     },
     "nixpkgs": {
       "locked": {
+        "lastModified": 1760596604,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3cbe716e2346710d6e1f7c559363d14e11c32a43",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
         "lastModified": 1758532697,
         "owner": "cachix",
         "repo": "devenv-nixpkgs",
@@ -89,9 +121,10 @@
     },
     "root": {
       "inputs": {
+        "custom": "custom",
         "devenv": "devenv",
         "git-hooks": "git-hooks",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "pre-commit-hooks": [
           "git-hooks"
         ]

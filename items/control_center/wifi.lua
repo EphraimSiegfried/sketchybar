@@ -140,7 +140,7 @@ wifi:subscribe({
   end)
   sbar.exec("ipconfig getsummary en0 | awk -F ' SSID : '  '/ SSID : / {print $2}'", function(result)
     ssid:set({ label = result })
-  end) -- FIX: very slow commmand, fix from https://discussions.apple.com/thread/256108303?sortBy=rank
+  end)
   sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Subnet mask: ' '/^Subnet mask: / {print $2}'", function(result)
     mask:set({ label = result })
   end)

@@ -9,6 +9,9 @@ let
   plist_file = "~/Library/LaunchAgents/org.nixos.sketchybar.plist";
 in
 {
+  packages = [
+    inputs.custom.packages.${pkgs.system}.sketchybar-system-stats
+  ];
   scripts.load.exec = "launchctl load -w ${plist_file}";
   scripts.unload.exec = "launchctl unload -w ${plist_file}";
   scripts.start = {

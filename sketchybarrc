@@ -1,12 +1,3 @@
-#!/usr/bin/env lua
-
--- Add the sketchybar module to the package cpath (the module could be
--- installed into the default search path then this would not be needed)
-package.cpath = package.cpath
-	.. ";/nix/store/77yfq0apvgrsg3h3k58cx268n836mkfp-lua5.4-sbarLua-0-unstable-2024-08-12/lib/lua/5.4/?.so"
-sbar = require("sketchybar")
-sbar.begin_config()
-require("init")
-sbar.hotload(true)
-sbar.end_config()
-sbar.event_loop()
+#! /bin/bash
+stats_provider --cpu usage temperature --disk usage total used --memory ram_usage ram_total ram_used swp_usage --interval 3 --no-units &
+./sbar_init
