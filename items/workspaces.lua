@@ -109,6 +109,10 @@ for mid, _ in pairs(monitors) do
 
     space:subscribe({ "aerospace_workspace_change" }, function(env)
       local selected = tonumber(env.FOCUSED_WORKSPACE) == wid
+      print(env.FOCUSED_WORKSPACE)
+      if tonumber(env.FOCUSED_WORKSPACE) == wid then
+        print(env.FOCUSED_WORKSPACE)
+      end
       space:set({
         icon = { highlight = selected },
         label = { highlight = selected },
@@ -134,10 +138,35 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
-space_window_observer:subscribe({ "space_windows_change" }, function()
-  sbar.exec("aerospace list-workspaces --focused", function(focused_id)
-    set_icon_line(tonumber(focused_id))
+local function refresh_highlight()
+  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
+    local focused_id = tonumber(focused_workspace)
+    if not focused_id then
+      return
+    end
+    for wid = 1, max_workspaces do
+      if workspaces[wid] then
+        local selected = focused_id == wid
+        workspaces[wid]:set({
+          icon = { highlight = selected },
+          label = { highlight = selected },
+          background = { border_color = selected and colors.black or colors.bg2 },
+        })
+      end
+    end
   end)
+end
+
+space_window_observer:subscribe({ "space_windows_change" }, function()
+  for wid = 1, max_workspaces do
+    set_icon_line(wid)
+  end
+end)
+
+-- Re-sync highlight on app focus change as a safety net
+-- for dropped aerospace_workspace_change events
+space_window_observer:subscribe({ "front_app_switched" }, function()
+  refresh_highlight()
 end)
 
 space_window_observer:subscribe({ "change_window_workspace" }, function(env)
