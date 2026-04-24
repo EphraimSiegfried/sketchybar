@@ -1,4 +1,5 @@
 return {
+  ["Proton Mail"] = ":proton_mail:",
   ["Typora"] = ":text:",
   ["Orion"] = ":orion:",
   ["Orion RC"] = ":orion:",
