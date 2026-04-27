@@ -9,6 +9,7 @@ sbar.add("event", "change_window_workspace")
 
 local workspaces = {} -- workspaces[wid] = space item
 local monitor_workspaces = {} -- monitor_workspaces[mid] = sorted list of wids
+local focused_wid = nil -- tracked locally, no async needed
 
 local function execute_command(command)
   local handle = io.popen(command)
@@ -22,40 +23,43 @@ local function set_visible(wid, is_visible)
   workspaces[wid]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
 
+local function apply_highlight(new_focused)
+  if new_focused == focused_wid then return end
+  -- Un-highlight previous
+  if focused_wid and workspaces[focused_wid] then
+    workspaces[focused_wid]:set({
+      icon = { highlight = false },
+      label = { highlight = false },
+      background = { border_color = colors.bg2 },
+    })
+  end
+  -- Highlight new
+  focused_wid = new_focused
+  if focused_wid and workspaces[focused_wid] then
+    workspaces[focused_wid]:set({
+      icon = { highlight = true },
+      label = { highlight = true },
+      background = { border_color = colors.black },
+    })
+  end
+end
+
 local function refresh_visibility()
   sbar.exec("aerospace list-windows --format %{workspace} --all", function(output)
     local occupied = {}
     for ws in output:gmatch("%S+") do
       occupied[tonumber(ws)] = true
     end
-    sbar.exec("aerospace list-workspaces --focused", function(focused)
-      local fid = tonumber(focused)
-      for mid, wids in pairs(monitor_workspaces) do
-        local max_visible = 0
-        for _, wid in ipairs(wids) do
-          if occupied[wid] or wid == fid then
-            max_visible = math.max(max_visible, wid)
-          end
-        end
-        for _, wid in ipairs(wids) do
-          set_visible(wid, wid <= max_visible)
+    for mid, wids in pairs(monitor_workspaces) do
+      local max_visible = 0
+      for _, wid in ipairs(wids) do
+        if occupied[wid] or wid == focused_wid then
+          max_visible = math.max(max_visible, wid)
         end
       end
-    end)
-  end)
-end
-
-local function refresh_highlight()
-  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
-    local focused_id = tonumber(focused_workspace)
-    if not focused_id then return end
-    for wid, space in pairs(workspaces) do
-      local selected = focused_id == wid
-      space:set({
-        icon = { highlight = selected },
-        label = { highlight = selected },
-        background = { border_color = selected and colors.black or colors.bg2 },
-      })
+      for _, wid in ipairs(wids) do
+        set_visible(wid, wid <= max_visible)
+      end
     end
   end)
 end
@@ -132,15 +136,6 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
       width = settings.paddings,
     })
 
-    space:subscribe({ "aerospace_workspace_change" }, function(env)
-      local selected = tonumber(env.FOCUSED_WORKSPACE) == wid
-      space:set({
-        icon = { highlight = selected },
-        label = { highlight = selected },
-        background = { border_color = selected and colors.black or colors.bg2 },
-      })
-    end)
-
     space:subscribe({ "mouse.clicked" }, function()
       sbar.exec("aerospace workspace " .. wid)
     end)
@@ -153,6 +148,15 @@ for mid, wids in pairs(monitor_workspaces) do
   table.sort(wids)
 end
 
+-- Init focused workspace and visibility
+focused_wid = tonumber(execute_command("aerospace list-workspaces --focused"))
+if focused_wid and workspaces[focused_wid] then
+  workspaces[focused_wid]:set({
+    icon = { highlight = true },
+    label = { highlight = true },
+    background = { border_color = colors.black },
+  })
+end
 refresh_visibility()
 
 local space_window_observer = sbar.add("item", {
@@ -160,19 +164,24 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
--- Windows opened/closed: update icons + visibility
-space_window_observer:subscribe({ "space_windows_change" }, function()
-  sbar.exec("aerospace list-workspaces --focused", function(focused)
-    local fid = tonumber(focused)
-    if fid then set_icon_line(fid) end
-  end)
+-- Workspace switched: update highlight + icons + visibility
+-- This is the ONLY source of truth for focused workspace
+space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
+  apply_highlight(tonumber(env.FOCUSED_WORKSPACE))
+  set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
+  set_icon_line(tonumber(env.PREV_WORKSPACE))
   refresh_visibility()
 end)
 
--- App focus changed: only re-sync highlight (cheap, 1 exec)
-space_window_observer:subscribe({ "front_app_switched" }, function()
-  refresh_highlight()
+-- Windows opened/closed: update focused workspace icons + visibility
+space_window_observer:subscribe({ "space_windows_change" }, function()
+  if focused_wid then set_icon_line(focused_wid) end
+  refresh_visibility()
 end)
+
+-- App focus changed: no async calls needed, highlight is already tracked
+-- (aerospace_workspace_change handles all workspace switches)
+space_window_observer:subscribe({ "front_app_switched" }, function() end)
 
 -- Window moved to another workspace: update both workspaces
 space_window_observer:subscribe({ "change_window_workspace" }, function(env)
@@ -183,11 +192,4 @@ end)
 
 space_window_observer:subscribe({ "system_woke" }, function()
   sbar.exec("sketchybar --reload")
-end)
-
--- Workspace switched: update visibility + icons for prev/current
-space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
-  set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
-  set_icon_line(tonumber(env.PREV_WORKSPACE))
-  refresh_visibility()
 end)
