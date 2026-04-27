@@ -51,7 +51,13 @@
         '';
       };
 
+      runtimeDeps = with pkgs; [
+        wttrbar
+        blueutil
+      ];
+
       sketchybar-wrapped = pkgs.writeShellScriptBin "sketchybar" ''
+        export PATH="${lib.makeBinPath runtimeDeps}:$PATH"
         exec ${pkgs.sketchybar}/bin/sketchybar -c ${config}/sketchybarrc "$@"
       '';
     in
