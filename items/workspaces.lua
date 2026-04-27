@@ -8,6 +8,7 @@ sbar.add("event", "aerospace_workspace_change")
 sbar.add("event", "change_window_workspace")
 
 local workspaces = {} -- workspaces[wid] = space item
+local monitor_workspaces = {} -- monitor_workspaces[mid] = sorted list of wids
 
 -- Function to execute shell commands and return the output
 local function execute_command(command)
@@ -22,17 +23,25 @@ local function set_visible(wid, is_visible)
   workspaces[wid]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
 
+-- Show workspaces 1..max(focused, highest_with_windows) per monitor
 local function refresh_visibility()
   sbar.exec("aerospace list-windows --format %{workspace} --all", function(output)
-    local active = {}
+    local occupied = {}
     for ws in output:gmatch("%S+") do
-      active[tonumber(ws)] = true
+      occupied[tonumber(ws)] = true
     end
     sbar.exec("aerospace list-workspaces --focused", function(focused)
       local fid = tonumber(focused)
-      if fid then active[fid] = true end
-      for wid, _ in pairs(workspaces) do
-        set_visible(wid, active[wid] == true)
+      for mid, wids in pairs(monitor_workspaces) do
+        local max_visible = 0
+        for _, wid in ipairs(wids) do
+          if occupied[wid] or wid == fid then
+            max_visible = math.max(max_visible, wid)
+          end
+        end
+        for _, wid in ipairs(wids) do
+          set_visible(wid, wid <= max_visible)
+        end
       end
     end)
   end)
@@ -47,8 +56,8 @@ local function set_icon_line(wid)
     function(appNames)
       local icon_line = ""
       for appName in string.gmatch(appNames, "[^\r\n]+") do
-        appName = appName:match("^%s*(.-)%s*$")
-        local lookup = app_icons[appName]
+        local trimmed = appName:match("^%s*(.-)%s*$")
+        local lookup = app_icons[trimmed]
         local icon = ((lookup == nil) and app_icons["Default"] or lookup)
         icon_line = icon_line .. icon
       end
@@ -59,6 +68,25 @@ local function set_icon_line(wid)
   )
 end
 
+local function refresh_all()
+  refresh_visibility()
+  for wid, _ in pairs(workspaces) do
+    set_icon_line(wid)
+  end
+  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
+    local focused_id = tonumber(focused_workspace)
+    if not focused_id then return end
+    for wid, space in pairs(workspaces) do
+      local selected = focused_id == wid
+      space:set({
+        icon = { highlight = selected },
+        label = { highlight = selected },
+        background = { border_color = selected and colors.black or colors.bg2 },
+      })
+    end
+  end)
+end
+
 -- Get workspace-to-monitor mapping from aerospace
 local ws_monitor_output = execute_command("aerospace list-workspaces --monitor all --format '%{workspace} %{monitor-id}'")
 for line in ws_monitor_output:gmatch("[^\r\n]+") do
@@ -66,6 +94,12 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
   if wid_str and mid_str then
     local wid = tonumber(wid_str)
     local mid = tonumber(mid_str)
+
+    -- Track which workspaces belong to which monitor
+    if not monitor_workspaces[mid] then
+      monitor_workspaces[mid] = {}
+    end
+    table.insert(monitor_workspaces[mid], wid)
 
     local item_name = "space." .. tostring(mid) .. "." .. tostring(wid)
     local space = sbar.add("space", item_name, {
@@ -122,6 +156,11 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
   end
 end
 
+-- Sort workspace lists per monitor
+for mid, wids in pairs(monitor_workspaces) do
+  table.sort(wids)
+end
+
 refresh_visibility()
 
 local space_window_observer = sbar.add("item", {
@@ -129,37 +168,19 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
-local function refresh_highlight()
-  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
-    local focused_id = tonumber(focused_workspace)
-    if not focused_id then
-      return
-    end
-    for wid, space in pairs(workspaces) do
-      local selected = focused_id == wid
-      space:set({
-        icon = { highlight = selected },
-        label = { highlight = selected },
-        background = { border_color = selected and colors.black or colors.bg2 },
-      })
-    end
-  end)
-end
-
 space_window_observer:subscribe({ "space_windows_change" }, function()
-  for wid, _ in pairs(workspaces) do
-    set_icon_line(wid)
-  end
-  refresh_visibility()
+  refresh_all()
 end)
 
+-- Re-sync everything on app focus change as a safety net
 space_window_observer:subscribe({ "front_app_switched" }, function()
-  refresh_highlight()
+  refresh_all()
 end)
 
 space_window_observer:subscribe({ "change_window_workspace" }, function(env)
   set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
   set_icon_line(tonumber(env.TARGET_WORKSPACE))
+  refresh_visibility()
 end)
 
 space_window_observer:subscribe({ "system_woke" }, function()
@@ -167,5 +188,5 @@ space_window_observer:subscribe({ "system_woke" }, function()
 end)
 
 space_window_observer:subscribe({ "aerospace_workspace_change" }, function()
-  refresh_visibility()
+  refresh_all()
 end)
