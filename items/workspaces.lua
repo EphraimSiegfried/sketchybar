@@ -7,8 +7,7 @@ require("utils")
 sbar.add("event", "aerospace_workspace_change")
 sbar.add("event", "change_window_workspace")
 
-local workspaces = {}
-local max_workspaces = 9
+local workspaces = {} -- workspaces[wid] = space item
 
 -- Function to execute shell commands and return the output
 local function execute_command(command)
@@ -19,57 +18,57 @@ local function execute_command(command)
 end
 
 local function set_visible(wid, is_visible)
+  if not workspaces[wid] then return end
   workspaces[wid]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
 
--- Get monitor information
+local function refresh_visibility()
+  sbar.exec("aerospace list-windows --format %{workspace} --all", function(output)
+    local active = {}
+    for ws in output:gmatch("%S+") do
+      active[tonumber(ws)] = true
+    end
+    sbar.exec("aerospace list-workspaces --focused", function(focused)
+      local fid = tonumber(focused)
+      if fid then active[fid] = true end
+      for wid, _ in pairs(workspaces) do
+        set_visible(wid, active[wid] == true)
+      end
+    end)
+  end)
+end
 
 local function set_icon_line(wid)
-  if wid == nil then
+  if wid == nil or not workspaces[wid] then
     return
   end
   sbar.exec(
     [[aerospace list-windows --workspace ]] .. tostring(wid) .. [[ | awk -F '|' '{print $2}']],
     function(appNames)
-      -- set_visible(wid, true)
       local icon_line = ""
       for appName in string.gmatch(appNames, "[^\r\n]+") do
-        -- Trim leading and trailing whitespace
         appName = appName:match("^%s*(.-)%s*$")
         local lookup = app_icons[appName]
         local icon = ((lookup == nil) and app_icons["Default"] or lookup)
         icon_line = icon_line .. icon
       end
-      if wid == "focused" then
-        sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
-          for wid in focused_workspace:gmatch("%S+") do
-            workspaces[tonumber(wid)]:set({ label = icon_line })
-          end
-        end)
-      else
-        sbar.animate("tanh", 10, function()
-          workspaces[tonumber(wid)]:set({ label = icon_line })
-        end)
-      end
+      sbar.animate("tanh", 10, function()
+        workspaces[wid]:set({ label = icon_line })
+      end)
     end
   )
 end
 
--- initial run
+-- Get workspace-to-monitor mapping from aerospace
+local ws_monitor_output = execute_command("aerospace list-workspaces --monitor all --format '%{workspace} %{monitor-id}'")
+for line in ws_monitor_output:gmatch("[^\r\n]+") do
+  local wid_str, mid_str = line:match("(%S+)%s+(%S+)")
+  if wid_str and mid_str then
+    local wid = tonumber(wid_str)
+    local mid = tonumber(mid_str)
 
--- Get workspaces for each monitor
-local monitors = {}
-local monitor_output = execute_command("aerospace list-monitors")
-for line in monitor_output:gmatch("[^\r\n]+") do
-  local mid, name = line:match("(%d+) | (.+)")
-  if mid and name then
-    monitors[tonumber(mid)] = name
-  end
-end
-
-for mid, _ in pairs(monitors) do
-  for wid = 1, max_workspaces do
-    local space = sbar.add("space", "space." .. tostring(wid), {
+    local item_name = "space." .. tostring(mid) .. "." .. tostring(wid)
+    local space = sbar.add("space", item_name, {
       space = mid,
       display = mid,
       icon = {
@@ -101,18 +100,13 @@ for mid, _ in pairs(monitors) do
 
     workspaces[wid] = space
 
-    -- Padding space
-    sbar.add("space", "space.padding." .. tostring(wid), {
+    sbar.add("space", "space.padding." .. tostring(mid) .. "." .. tostring(wid), {
       space = mid,
       width = settings.paddings,
     })
 
     space:subscribe({ "aerospace_workspace_change" }, function(env)
       local selected = tonumber(env.FOCUSED_WORKSPACE) == wid
-      print(env.FOCUSED_WORKSPACE)
-      if tonumber(env.FOCUSED_WORKSPACE) == wid then
-        print(env.FOCUSED_WORKSPACE)
-      end
       space:set({
         icon = { highlight = selected },
         label = { highlight = selected },
@@ -123,15 +117,12 @@ for mid, _ in pairs(monitors) do
     space:subscribe({ "mouse.clicked" }, function()
       sbar.exec("aerospace workspace " .. wid)
     end)
+
     set_icon_line(wid)
   end
 end
 
-sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_window)
-  for wid = 1, max_active_window do
-    set_visible(wid, true)
-  end
-end)
+refresh_visibility()
 
 local space_window_observer = sbar.add("item", {
   drawing = false,
@@ -144,27 +135,24 @@ local function refresh_highlight()
     if not focused_id then
       return
     end
-    for wid = 1, max_workspaces do
-      if workspaces[wid] then
-        local selected = focused_id == wid
-        workspaces[wid]:set({
-          icon = { highlight = selected },
-          label = { highlight = selected },
-          background = { border_color = selected and colors.black or colors.bg2 },
-        })
-      end
+    for wid, space in pairs(workspaces) do
+      local selected = focused_id == wid
+      space:set({
+        icon = { highlight = selected },
+        label = { highlight = selected },
+        background = { border_color = selected and colors.black or colors.bg2 },
+      })
     end
   end)
 end
 
 space_window_observer:subscribe({ "space_windows_change" }, function()
-  for wid = 1, max_workspaces do
+  for wid, _ in pairs(workspaces) do
     set_icon_line(wid)
   end
+  refresh_visibility()
 end)
 
--- Re-sync highlight on app focus change as a safety net
--- for dropped aerospace_workspace_change events
 space_window_observer:subscribe({ "front_app_switched" }, function()
   refresh_highlight()
 end)
@@ -174,31 +162,10 @@ space_window_observer:subscribe({ "change_window_workspace" }, function(env)
   set_icon_line(tonumber(env.TARGET_WORKSPACE))
 end)
 
--- TODO: fix this
--- Problem: individual spaces fail to get the aerospace_workspace_change trigger when waking up
--- Temporary fix is to just reload the whole bar
 space_window_observer:subscribe({ "system_woke" }, function()
   sbar.exec("sketchybar --reload")
 end)
 
-space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
-  local focused_id = tonumber(env.FOCUSED_WORKSPACE)
-  local prev_id = tonumber(env.PREV_WORKSPACE)
-
-  if not prev_id or not focused_id or prev_id == focused_id then
-    return
-  end
-
-  sbar.exec("aerospace list-windows --format %{workspace} --all | sort -n | tail -n 1 ", function(max_active_workspace)
-    max_active_workspace = math.max(focused_id, tonumber(max_active_workspace))
-    if prev_id > max_active_workspace then
-      for wid = max_active_workspace + 1, prev_id do
-        set_visible(wid, false)
-      end
-    else
-      for wid = prev_id, max_active_workspace do
-        set_visible(wid, true)
-      end
-    end
-  end)
+space_window_observer:subscribe({ "aerospace_workspace_change" }, function()
+  refresh_visibility()
 end)

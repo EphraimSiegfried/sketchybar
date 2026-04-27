@@ -1,4 +1,4 @@
-#!/nix/store/ap58hmlnqflgkf8nyym5rfl3agg8ipqy-lua-5.4.7/bin/lua
+#!/nix/store/adfc4ziq7b7vwvps6bq6b0kscjjpcxsd-lua-5.4.7/bin/lua
 package.cpath = package.cpath .. ";/nix/store/77yfq0apvgrsg3h3k58cx268n836mkfp-lua5.4-sbarLua-0-unstable-2024-08-12/lib/lua/5.4/?.so"
 sbar = require("sketchybar")
 
