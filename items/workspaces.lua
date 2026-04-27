@@ -10,7 +10,6 @@ sbar.add("event", "change_window_workspace")
 local workspaces = {} -- workspaces[wid] = space item
 local monitor_workspaces = {} -- monitor_workspaces[mid] = sorted list of wids
 
--- Function to execute shell commands and return the output
 local function execute_command(command)
   local handle = io.popen(command)
   local result = handle:read("*a")
@@ -23,7 +22,6 @@ local function set_visible(wid, is_visible)
   workspaces[wid]:set({ label = { drawing = is_visible }, icon = { drawing = is_visible } })
 end
 
--- Show workspaces 1..max(focused, highest_with_windows) per monitor
 local function refresh_visibility()
   sbar.exec("aerospace list-windows --format %{workspace} --all", function(output)
     local occupied = {}
@@ -44,6 +42,21 @@ local function refresh_visibility()
         end
       end
     end)
+  end)
+end
+
+local function refresh_highlight()
+  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
+    local focused_id = tonumber(focused_workspace)
+    if not focused_id then return end
+    for wid, space in pairs(workspaces) do
+      local selected = focused_id == wid
+      space:set({
+        icon = { highlight = selected },
+        label = { highlight = selected },
+        background = { border_color = selected and colors.black or colors.bg2 },
+      })
+    end
   end)
 end
 
@@ -68,25 +81,6 @@ local function set_icon_line(wid)
   )
 end
 
-local function refresh_all()
-  refresh_visibility()
-  for wid, _ in pairs(workspaces) do
-    set_icon_line(wid)
-  end
-  sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
-    local focused_id = tonumber(focused_workspace)
-    if not focused_id then return end
-    for wid, space in pairs(workspaces) do
-      local selected = focused_id == wid
-      space:set({
-        icon = { highlight = selected },
-        label = { highlight = selected },
-        background = { border_color = selected and colors.black or colors.bg2 },
-      })
-    end
-  end)
-end
-
 -- Get workspace-to-monitor mapping from aerospace
 local ws_monitor_output = execute_command("aerospace list-workspaces --monitor all --format '%{workspace} %{monitor-id}'")
 for line in ws_monitor_output:gmatch("[^\r\n]+") do
@@ -95,7 +89,6 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
     local wid = tonumber(wid_str)
     local mid = tonumber(mid_str)
 
-    -- Track which workspaces belong to which monitor
     if not monitor_workspaces[mid] then
       monitor_workspaces[mid] = {}
     end
@@ -156,7 +149,6 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
   end
 end
 
--- Sort workspace lists per monitor
 for mid, wids in pairs(monitor_workspaces) do
   table.sort(wids)
 end
@@ -168,15 +160,21 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
+-- Windows opened/closed: update icons + visibility
 space_window_observer:subscribe({ "space_windows_change" }, function()
-  refresh_all()
+  sbar.exec("aerospace list-workspaces --focused", function(focused)
+    local fid = tonumber(focused)
+    if fid then set_icon_line(fid) end
+  end)
+  refresh_visibility()
 end)
 
--- Re-sync everything on app focus change as a safety net
+-- App focus changed: only re-sync highlight (cheap, 1 exec)
 space_window_observer:subscribe({ "front_app_switched" }, function()
-  refresh_all()
+  refresh_highlight()
 end)
 
+-- Window moved to another workspace: update both workspaces
 space_window_observer:subscribe({ "change_window_workspace" }, function(env)
   set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
   set_icon_line(tonumber(env.TARGET_WORKSPACE))
@@ -187,6 +185,9 @@ space_window_observer:subscribe({ "system_woke" }, function()
   sbar.exec("sketchybar --reload")
 end)
 
-space_window_observer:subscribe({ "aerospace_workspace_change" }, function()
-  refresh_all()
+-- Workspace switched: update visibility + icons for prev/current
+space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
+  set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
+  set_icon_line(tonumber(env.PREV_WORKSPACE))
+  refresh_visibility()
 end)
