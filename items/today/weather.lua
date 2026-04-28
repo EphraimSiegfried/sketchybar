@@ -56,6 +56,7 @@ weather.temp:subscribe({ "routine", "forced", "system_woke", "weather_update" },
 
   -- Fetch events from calendar
   sbar.exec("wttrbar  --ampm", function(forecast)
+    if forecast == nil or type(forecast) ~= "table" or forecast.text == nil then return end
     -- Extract icon and temperature
     for i, value in ipairs(STR_SPLIT(forecast.text)) do
       -- first part of response is icon

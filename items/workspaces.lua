@@ -9,7 +9,7 @@ sbar.add("event", "change_window_workspace")
 
 local workspaces = {} -- workspaces[wid] = space item
 local monitor_workspaces = {} -- monitor_workspaces[mid] = sorted list of wids
-local focused_wid = nil -- tracked locally, no async needed
+local focused_wid = nil
 
 local function execute_command(command)
   local handle = io.popen(command)
@@ -25,7 +25,6 @@ end
 
 local function apply_highlight(new_focused)
   if new_focused == focused_wid then return end
-  -- Un-highlight previous
   if focused_wid and workspaces[focused_wid] then
     workspaces[focused_wid]:set({
       icon = { highlight = false },
@@ -33,7 +32,6 @@ local function apply_highlight(new_focused)
       background = { border_color = colors.bg2 },
     })
   end
-  -- Highlight new
   focused_wid = new_focused
   if focused_wid and workspaces[focused_wid] then
     workspaces[focused_wid]:set({
@@ -65,9 +63,7 @@ local function refresh_visibility()
 end
 
 local function set_icon_line(wid)
-  if wid == nil or not workspaces[wid] then
-    return
-  end
+  if wid == nil or not workspaces[wid] then return end
   sbar.exec(
     [[aerospace list-windows --workspace ]] .. tostring(wid) .. [[ | awk -F '|' '{print $2}']],
     function(appNames)
@@ -139,8 +135,6 @@ for line in ws_monitor_output:gmatch("[^\r\n]+") do
     space:subscribe({ "mouse.clicked" }, function()
       sbar.exec("aerospace workspace " .. wid)
     end)
-
-    set_icon_line(wid)
   end
 end
 
@@ -148,7 +142,7 @@ for mid, wids in pairs(monitor_workspaces) do
   table.sort(wids)
 end
 
--- Init focused workspace and visibility
+-- Init
 focused_wid = tonumber(execute_command("aerospace list-workspaces --focused"))
 if focused_wid and workspaces[focused_wid] then
   workspaces[focused_wid]:set({
@@ -157,6 +151,9 @@ if focused_wid and workspaces[focused_wid] then
     background = { border_color = colors.black },
   })
 end
+for wid, _ in pairs(workspaces) do
+  set_icon_line(wid)
+end
 refresh_visibility()
 
 local space_window_observer = sbar.add("item", {
@@ -164,8 +161,6 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
--- Workspace switched: update highlight + icons + visibility
--- This is the ONLY source of truth for focused workspace
 space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
   apply_highlight(tonumber(env.FOCUSED_WORKSPACE))
   set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
@@ -173,17 +168,6 @@ space_window_observer:subscribe({ "aerospace_workspace_change" }, function(env)
   refresh_visibility()
 end)
 
--- Windows opened/closed: update focused workspace icons + visibility
-space_window_observer:subscribe({ "space_windows_change" }, function()
-  if focused_wid then set_icon_line(focused_wid) end
-  refresh_visibility()
-end)
-
--- App focus changed: no async calls needed, highlight is already tracked
--- (aerospace_workspace_change handles all workspace switches)
-space_window_observer:subscribe({ "front_app_switched" }, function() end)
-
--- Window moved to another workspace: update both workspaces
 space_window_observer:subscribe({ "change_window_workspace" }, function(env)
   set_icon_line(tonumber(env.FOCUSED_WORKSPACE))
   set_icon_line(tonumber(env.TARGET_WORKSPACE))

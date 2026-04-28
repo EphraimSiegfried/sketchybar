@@ -25,7 +25,8 @@
             ));
           in
           ''
-            cat > init.lua.in <<LUAEOF
+            cat > sketchybarrc <<LUAEOF
+            #!${pkgs.lua5_5}/bin/lua
             local dir = "${placeholder "out"}"
             package.path = dir .. "/?.lua;" .. dir .. "/?/init.lua;" .. package.path
             package.cpath = package.cpath .. ";${sbarluaDir}/?.so"
@@ -36,18 +37,12 @@
             sbar.end_config()
             sbar.event_loop()
             LUAEOF
-
-            cat > sketchybarrc <<'SHEOF'
-            #!/usr/bin/env bash
-            SHEOF
-            echo "${pkgs.lua5_5}/bin/lua ${placeholder "out"}/init.lua.in" >> sketchybarrc
             chmod +x sketchybarrc
           '';
 
-
         installPhase = ''
           mkdir -p $out
-          cp -r *.lua *.lua.in items sketchybarrc $out/
+          cp -r *.lua items sketchybarrc $out/
         '';
       };
 
@@ -58,7 +53,11 @@
 
       sketchybar-wrapped = pkgs.writeShellScriptBin "sketchybar" ''
         export PATH="${lib.makeBinPath runtimeDeps}:$PATH"
-        exec ${pkgs.sketchybar}/bin/sketchybar -c ${config}/sketchybarrc "$@"
+        if [ $# -eq 0 ]; then
+          exec ${pkgs.sketchybar}/bin/sketchybar -c ${config}/sketchybarrc
+        else
+          exec ${pkgs.sketchybar}/bin/sketchybar "$@"
+        fi
       '';
     in
     {
